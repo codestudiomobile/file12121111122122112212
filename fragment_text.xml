@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".TextFragment">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/lineNumbers"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:fontFamily="monospace"
+                android:paddingStart="8dp"
+                android:paddingTop="8dp"
+                android:paddingEnd="8dp"
+                android:text="1"
+                android:textSize="20sp" />
+
+            <HorizontalScrollView
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:fillViewport="true">
+
+                <EditText
+                    android:id="@+id/fileContent"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:gravity="top|start"
+                    android:inputType="textMultiLine"
+                    android:minEms="25"
+                    android:padding="8dp"
+                    android:textSize="20sp" />
+            </HorizontalScrollView>
+        </LinearLayout>
+    </ScrollView>
+</FrameLayout>

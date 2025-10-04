@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    tools:context=".EditorActivity">
+
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:title="Editor" />
+
+    <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/openEditorOnStartup"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:checked="false"
+        android:padding="20dp"
+        android:text="Open editor on startup"
+        android:textSize="25sp"
+        app:switchPadding="40dp" />
+
+    <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/openWelcomeScreenOnStartup"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:checked="true"
+        android:padding="20dp"
+        android:text="Open welcome screen on startup"
+        android:textSize="25sp"
+        app:switchPadding="40dp" />
+</LinearLayout>
