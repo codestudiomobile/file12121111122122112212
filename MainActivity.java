@@ -172,11 +172,21 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
         boolean showWelcome = prefs.getBoolean("openWelcomeScreenOnStartup", true);
 
         if (viewPagerAdapter.getItemCount() == 0) {
+            int welcomeIndex = -1;
+            int editorIndex = -1;
+
             if (showWelcome) {
-                viewPagerAdapter.addTab(ViewPagerAdapter.WELCOME_URI, "Welcome", false);
+                welcomeIndex = viewPagerAdapter.addTab(ViewPagerAdapter.WELCOME_URI, "Welcome", false);
             }
             if (showEditor) {
-                viewPagerAdapter.addTab(ViewPagerAdapter.UNTITLED_FILE_URI, "Untitled", false);
+                editorIndex = viewPagerAdapter.addTab(ViewPagerAdapter.UNTITLED_FILE_URI, "Untitled", false);
+            }
+
+            // Decide which tab to show first
+            int defaultIndex = (editorIndex != -1) ? editorIndex : welcomeIndex;
+            if (defaultIndex != -1) {
+                viewPager2.setCurrentItem(defaultIndex, false);
+                tabLayout.selectTab(tabLayout.getTabAt(defaultIndex));
             }
         }
     }
@@ -370,42 +380,48 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
     }
 
     private void runFile(FileItem item) {
-        new Thread(() -> {
-            runOnUiThread(() -> {
-                progressBar.setActivated(true);
-                progressBar.setVisibility(View.VISIBLE);
-            });
-            if (item == null || item.uri == null) {
-                Toast.makeText(this, "Please select a file first.", Toast.LENGTH_SHORT).show();
-                return;
-            }
+        if (item == null || item.uri == null) {
+            Toast.makeText(this, "Please select a file first.", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
-            if (item.mimeType != null && (item.mimeType.equals("text/html") || item.mimeType.equals("application/xhtml+xml"))) {
-                openHtmlInBrowser(item.uri);
-                return;
-            }
+        if (item.mimeType != null && (item.mimeType.equals("text/html") || item.mimeType.equals("application/xhtml+xml"))) {
+            openHtmlInBrowser(item.uri);
+            return;
+        }
 
-            String absoluteFilePath = getAbsolutePathFromUri(this, item.uri);
-            String fileName = item.displayName;
+        String absoluteFilePath = getAbsolutePathFromUri(this, item.uri);
+        String fileName = item.displayName;
 
-            if (absoluteFilePath != null && fileName != null) {
-                String command = CommandFetcher.getCommand(this, item.uri);
-                Log.i("runFile", "runFile: " + command + " running fine");
-                // ✅ Wrap URI with "run" scheme so createFragment() returns TerminalFragment
-                Uri runUri = new Uri.Builder().scheme("run").authority("local").appendPath(fileName).build();
-                runOnUiThread(() -> {
-                    int tabIndex = viewPagerAdapter.addTab(runUri, "Running (" + fileName + ")", true);
-                    tabLayout.selectTab(tabLayout.getTabAt(tabIndex));
-                    viewPager2.setCurrentItem(tabIndex);
-                });
-                Log.i("runFile", "runFile: " + runUri + " running fine");
-                new TermuxRunner(this).executeCommandInternally(command, this); // 'this' must implement ConsoleInputListener
-                Log.i("runFile", "runFile: running fine");
-            } else {
-                Toast.makeText(this, "Execution failed: Cannot resolve file path.", Toast.LENGTH_LONG).show();
-                Log.e("MainActivity", "Failed to resolve URI: " + item.uri);
-            }
-        }).start();
+        if (absoluteFilePath == null || fileName == null) {
+            Toast.makeText(this, "Execution failed: Cannot resolve file path.", Toast.LENGTH_LONG).show();
+            Log.e("MainActivity", "Failed to resolve URI: " + item.uri);
+            return;
+        }
+
+        String command = CommandFetcher.getCommand(this, item.uri);
+        Uri fileUri = item.uri;
+        Uri runUri = new Uri.Builder().scheme("run").authority("local").appendPath(fileName).build();
+
+        // UI: Show progress bar
+        progressBar.setActivated(true);
+        progressBar.setVisibility(View.VISIBLE);
+
+        // Step 1: Ensure file tab exists
+        int fileIndex = viewPagerAdapter.addTab(fileUri, fileName, false);
+
+        // Step 2: Remove old terminal tab if it exists
+        viewPagerAdapter.removeTerminalFor(fileUri);
+
+        // Step 3: Add new terminal tab next to file tab
+        int terminalIndex = viewPagerAdapter.addTab(runUri, "Running (" + fileName + ")", true);
+
+        // Step 4: Switch to terminal tab
+        viewPager2.setCurrentItem(terminalIndex, false);
+        tabLayout.selectTab(tabLayout.getTabAt(terminalIndex));
+
+        // Step 5: Run command
+        new TermuxRunner(this).executeCommandInternally(command, this); // 'this' must implement ConsoleInputListener
     }
 
     @Nullable

@@ -3,8 +3,6 @@ package com.codestudio.mobile;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.net.Uri;
-import android.util.Log;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
@@ -23,7 +21,7 @@ public class ViewPagerAdapter extends FragmentStateAdapter {
     public final List<Uri> fileUris;
     public final List<String> fileNames;
     private final FragmentActivity activity;
-    private final List<Fragment> terminalFragments = new ArrayList<>();
+    private final List<Fragment> fragments = new ArrayList<>();
 
     public ViewPagerAdapter(@NonNull FragmentActivity fragmentActivity, @NonNull List<Uri> fileUris) {
         super(fragmentActivity);
@@ -153,6 +151,16 @@ public class ViewPagerAdapter extends FragmentStateAdapter {
     @NonNull
     @Override
     public Fragment createFragment(int position) {
+        return fragments.get(position);
+    }
+
+    @Override
+    public int getItemCount() {
+        return fragments.size();
+    }
+    /*@NonNull
+    @Override
+    public Fragment createFragment(int position) {
         if (position < 0 || position >= fileUris.size()) {
             return new WelcomeFragment();
         }
@@ -168,7 +176,7 @@ public class ViewPagerAdapter extends FragmentStateAdapter {
         try {
             if ("run".equals(fileUri.getScheme())) {
                 // Return the tracked TerminalFragment
-                return terminalFragments.get(getTerminalIndex(position));
+                return fragments.get(getTerminalIndex(position));
             } else if (fileUri.equals(WELCOME_URI)) {
                 return new WelcomeFragment();
             } else if (fileUri.equals(UNTITLED_FILE_URI)) {
@@ -181,7 +189,7 @@ public class ViewPagerAdapter extends FragmentStateAdapter {
             Toast.makeText(activity, "Error opening file for editing.", Toast.LENGTH_SHORT).show();
             return new WelcomeFragment();
         }
-    }
+    }*/
 
     private int getTerminalIndex(int position) {
         int count = 0;
@@ -219,10 +227,10 @@ public class ViewPagerAdapter extends FragmentStateAdapter {
     public int getItemCount() {
         return fileUris.size();
     }*/
-    @Override
+    /*@Override
     public int getItemCount() {
-        return terminalFragments.size();
-    }
+        return fragments.size();
+    }*/
 
     public List<Uri> getFileUris() {
         return fileUris;
@@ -233,23 +241,69 @@ public class ViewPagerAdapter extends FragmentStateAdapter {
     }
 
     public int addTab(Uri uri, String fileName, boolean isTerminal) {
-        if (!isTerminal) {
-            for (int i = 0; i < fileUris.size(); i++) {
-                if (fileUris.get(i).equals(uri)) {
-                    return i;
-                }
+        // Remove old terminal if re-running
+        if (isTerminal) {
+            removeTerminalFor(uri);
+        }
+        if (uri.equals(WELCOME_URI)) {
+            int insertIndex = getInsertIndex(uri, isTerminal);
+            Fragment fragment = WelcomeFragment.newInstance();
+            fileUris.add(insertIndex, uri);
+            fileNames.add(insertIndex, fileName);
+            fragments.add(insertIndex, fragment);
+            return insertIndex;
+        } else if (uri.equals(UNTITLED_FILE_URI)) {
+            int insertIndex = getInsertIndex(uri, isTerminal);
+            Fragment fragment = TextFragment.newInstance(uri);
+            fileUris.add(insertIndex, uri);
+            fileNames.add(insertIndex, fileName);
+            fragments.add(insertIndex, fragment);
+            return insertIndex;
+        } else {
+            Fragment fragment = isTerminal ? TerminalFragment.newInstance(uri) : TextFragment.newInstance(uri);
+
+            int insertIndex = getInsertIndex(uri, isTerminal);
+
+            fileUris.add(insertIndex, uri);
+            fileNames.add(insertIndex, fileName);
+            fragments.add(insertIndex, fragment);
+
+            notifyItemInserted(insertIndex);
+            return insertIndex;
+        }
+    }
+
+    private int getInsertIndex(Uri uri, boolean isTerminal) {
+        if (!isTerminal || fileUris.isEmpty()) {
+            return fileUris.size() - 1; // Add at end
+        }
+
+        // Find file tab and insert terminal next to it
+        for (int i = 0; i < fileUris.size(); i++) {
+            if (fileUris.get(i).equals(uri)) {
+                return i + 1;
             }
         }
+        return fileUris.size() - 1; // fallback
+    }
 
-        fileUris.add(uri);
-        fileNames.add(fileName);
-
-        if (isTerminal) {
-            terminalFragments.add(TerminalFragment.newInstance(uri));
+    public void removeTerminalFor(Uri fileUri) {
+        for (int i = 0; i < fileUris.size(); i++) {
+            Uri uri = fileUris.get(i);
+            if ("run".equals(uri.getScheme()) && getBaseUri(uri).equals(fileUri)) {
+                fileUris.remove(i);
+                fileNames.remove(i);
+                fragments.remove(i);
+                notifyItemRemoved(i);
+                break;
+            }
         }
+    }
 
-        notifyItemInserted(fileUris.size() - 1);
-        return fileUris.size() - 1;
+    private Uri getBaseUri(Uri runUri) {
+        // Extract original file URI from run://local/sample.java
+        String path = runUri.getLastPathSegment();
+        return Uri.parse("content://your_base/" + path); // Adjust based on your scheme
     }
 
     public int findTabPositionByName(String name) {
