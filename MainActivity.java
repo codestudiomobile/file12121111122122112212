@@ -380,48 +380,49 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
     }
 
     private void runFile(FileItem item) {
-        if (item == null || item.uri == null) {
-            Toast.makeText(this, "Please select a file first.", Toast.LENGTH_SHORT).show();
-            return;
-        }
+        runOnUiThread(() -> {
+            if (item == null || item.uri == null) {
+                Toast.makeText(this, "Please select a file first.", Toast.LENGTH_SHORT).show();
+                return;
+            }
 
-        if (item.mimeType != null && (item.mimeType.equals("text/html") || item.mimeType.equals("application/xhtml+xml"))) {
-            openHtmlInBrowser(item.uri);
-            return;
-        }
+            if (item.mimeType != null && (item.mimeType.equals("text/html") || item.mimeType.equals("application/xhtml+xml"))) {
+                openHtmlInBrowser(item.uri);
+                return;
+            }
 
-        String absoluteFilePath = getAbsolutePathFromUri(this, item.uri);
-        String fileName = item.displayName;
+            String absoluteFilePath = getAbsolutePathFromUri(this, item.uri);
+            String fileName = item.displayName;
 
-        if (absoluteFilePath == null || fileName == null) {
-            Toast.makeText(this, "Execution failed: Cannot resolve file path.", Toast.LENGTH_LONG).show();
-            Log.e("MainActivity", "Failed to resolve URI: " + item.uri);
-            return;
-        }
+            if (absoluteFilePath == null || fileName == null) {
+                Toast.makeText(this, "Execution failed: Cannot resolve file path.", Toast.LENGTH_LONG).show();
+                Log.e("MainActivity", "Failed to resolve URI: " + item.uri);
+                return;
+            }
 
-        String command = CommandFetcher.getCommand(this, item.uri);
-        Uri fileUri = item.uri;
-        Uri runUri = new Uri.Builder().scheme("run").authority("local").appendPath(fileName).build();
+            String command = CommandFetcher.getCommand(this, item.uri);
+            Uri fileUri = item.uri;
+            Uri runUri = new Uri.Builder().scheme("run").authority("local").appendPath(fileName).build();
 
-        // UI: Show progress bar
-        progressBar.setActivated(true);
-        progressBar.setVisibility(View.VISIBLE);
+            progressBar.setActivated(true);
+            progressBar.setVisibility(View.VISIBLE);
 
-        // Step 1: Ensure file tab exists
-        int fileIndex = viewPagerAdapter.addTab(fileUri, fileName, false);
+            // Step 1: Ensure file tab exists
+            int fileIndex = viewPagerAdapter.addTab(fileUri, fileName, false);
 
-        // Step 2: Remove old terminal tab if it exists
-        viewPagerAdapter.removeTerminalFor(fileUri);
+            // Step 2: Remove old terminal tab
+            viewPagerAdapter.removeTerminalFor(fileUri);
 
-        // Step 3: Add new terminal tab next to file tab
-        int terminalIndex = viewPagerAdapter.addTab(runUri, "Running (" + fileName + ")", true);
+            // Step 3: Add new terminal tab next to file tab
+            int terminalIndex = viewPagerAdapter.addTab(runUri, "Running (" + fileName + ")", true);
 
-        // Step 4: Switch to terminal tab
-        viewPager2.setCurrentItem(terminalIndex, false);
-        tabLayout.selectTab(tabLayout.getTabAt(terminalIndex));
+            // Step 4: Switch to terminal tab
+            viewPager2.setCurrentItem(terminalIndex, false);
+            tabLayout.selectTab(tabLayout.getTabAt(terminalIndex));
 
-        // Step 5: Run command
-        new TermuxRunner(this).executeCommandInternally(command, this); // 'this' must implement ConsoleInputListener
+            // Step 5: Run command
+            new TermuxRunner(this).executeCommandInternally(command, this);
+        });
     }
 
     @Nullable

@@ -151,6 +151,9 @@ public class ViewPagerAdapter extends FragmentStateAdapter {
     @NonNull
     @Override
     public Fragment createFragment(int position) {
+        if (position < 0 || position >= fragments.size()) {
+            return new WelcomeFragment();
+        }
         return fragments.get(position);
     }
 
@@ -241,56 +244,45 @@ public class ViewPagerAdapter extends FragmentStateAdapter {
     }
 
     public int addTab(Uri uri, String fileName, boolean isTerminal) {
-        // Remove old terminal if re-running
         if (isTerminal) {
             removeTerminalFor(uri);
         }
+
+        Fragment fragment;
         if (uri.equals(WELCOME_URI)) {
-            int insertIndex = getInsertIndex(uri, isTerminal);
-            Fragment fragment = WelcomeFragment.newInstance();
-            fileUris.add(insertIndex, uri);
-            fileNames.add(insertIndex, fileName);
-            fragments.add(insertIndex, fragment);
-            return insertIndex;
+            fragment = WelcomeFragment.newInstance();
         } else if (uri.equals(UNTITLED_FILE_URI)) {
-            int insertIndex = getInsertIndex(uri, isTerminal);
-            Fragment fragment = TextFragment.newInstance(uri);
-            fileUris.add(insertIndex, uri);
-            fileNames.add(insertIndex, fileName);
-            fragments.add(insertIndex, fragment);
-            return insertIndex;
+            fragment = TextFragment.newInstance(uri);
         } else {
-            Fragment fragment = isTerminal ? TerminalFragment.newInstance(uri) : TextFragment.newInstance(uri);
-
-            int insertIndex = getInsertIndex(uri, isTerminal);
-
-            fileUris.add(insertIndex, uri);
-            fileNames.add(insertIndex, fileName);
-            fragments.add(insertIndex, fragment);
-
-            notifyItemInserted(insertIndex);
-            return insertIndex;
+            fragment = isTerminal ? TerminalFragment.newInstance(uri) : TextFragment.newInstance(uri);
         }
+
+        int insertIndex = getInsertIndex(uri, isTerminal);
+        fileUris.add(insertIndex, uri);
+        fileNames.add(insertIndex, fileName);
+        fragments.add(insertIndex, fragment);
+        notifyItemInserted(insertIndex);
+        return insertIndex;
     }
 
     private int getInsertIndex(Uri uri, boolean isTerminal) {
         if (!isTerminal || fileUris.isEmpty()) {
-            return fileUris.size() - 1; // Add at end
+            return fileUris.size() - 1;
         }
 
-        // Find file tab and insert terminal next to it
         for (int i = 0; i < fileUris.size(); i++) {
             if (fileUris.get(i).equals(uri)) {
                 return i + 1;
             }
         }
-        return fileUris.size() - 1; // fallback
+
+        return fileUris.size() - 1;
     }
 
     public void removeTerminalFor(Uri fileUri) {
         for (int i = 0; i < fileUris.size(); i++) {
             Uri uri = fileUris.get(i);
-            if ("run".equals(uri.getScheme()) && getBaseUri(uri).equals(fileUri)) {
+            if ("run".equals(uri.getScheme()) && uri.getLastPathSegment().equals(fileUri.getLastPathSegment())) {
                 fileUris.remove(i);
                 fileNames.remove(i);
                 fragments.remove(i);
