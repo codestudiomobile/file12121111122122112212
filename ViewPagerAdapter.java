@@ -3,6 +3,7 @@ package com.codestudio.mobile;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.net.Uri;
+import android.util.Log;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -22,7 +23,7 @@ public class ViewPagerAdapter extends FragmentStateAdapter {
     public final List<Uri> fileUris;
     public final List<String> fileNames;
     private final FragmentActivity activity;
-    private final List<Fragment> fragments = new ArrayList<>();
+    private final List<Fragment> terminalFragments = new ArrayList<>();
 
     public ViewPagerAdapter(@NonNull FragmentActivity fragmentActivity, @NonNull List<Uri> fileUris) {
         super(fragmentActivity);
@@ -149,7 +150,9 @@ public class ViewPagerAdapter extends FragmentStateAdapter {
      */
     // Removed: public TerminalFragment getTerminalFragment() {...}
     // Removed: public int findConsoleTabPosition() {...}
-    /*public Fragment createFragment(int position) {
+    @NonNull
+    @Override
+    public Fragment createFragment(int position) {
         if (position < 0 || position >= fileUris.size()) {
             return new WelcomeFragment();
         }
@@ -164,7 +167,8 @@ public class ViewPagerAdapter extends FragmentStateAdapter {
 
         try {
             if ("run".equals(fileUri.getScheme())) {
-                return TerminalFragment.newInstance(fileUri);
+                // Return the tracked TerminalFragment
+                return terminalFragments.get(getTerminalIndex(position));
             } else if (fileUri.equals(WELCOME_URI)) {
                 return new WelcomeFragment();
             } else if (fileUri.equals(UNTITLED_FILE_URI)) {
@@ -177,36 +181,47 @@ public class ViewPagerAdapter extends FragmentStateAdapter {
             Toast.makeText(activity, "Error opening file for editing.", Toast.LENGTH_SHORT).show();
             return new WelcomeFragment();
         }
-    }*/
-    @NonNull
-    @Override
-    public Fragment createFragment(int position) {
-        Uri fileUri = fileUris.get(position);
-
-        if ("run".equals(fileUri.getScheme())) {
-            return TerminalFragment.newInstance(fileUri);
-        } else if (fileUri.equals(WELCOME_URI)) {
-            return WelcomeFragment.newInstance();
-        } else if (fileUri.equals(UNTITLED_FILE_URI)) {
-            return TextFragment.newInstance(UNTITLED_FILE_URI);
-        } else {
-            try {
-                return TextFragment.newInstance(fileUri);
-            } catch (Exception e) {
-                e.printStackTrace();
-                Toast.makeText(activity, "Error opening file for editing.", Toast.LENGTH_SHORT).show();
-                return WelcomeFragment.newInstance();
-            }
-        }
     }
 
+    private int getTerminalIndex(int position) {
+        int count = 0;
+        for (int i = 0; i <= position; i++) {
+            if ("run".equals(fileUris.get(i).getScheme())) {
+                count++;
+            }
+        }
+        return count - 1; // zero-based index
+    }
+
+    /* @NonNull
+     @Override
+     public Fragment createFragment(int position) {
+         Uri fileUri = fileUris.get(position);
+
+         if ("run".equals(fileUri.getScheme())) {
+             return TerminalFragment.newInstance(fileUri);
+         } else if (fileUri.equals(WELCOME_URI)) {
+             return WelcomeFragment.newInstance();
+         } else if (fileUri.equals(UNTITLED_FILE_URI)) {
+             return TextFragment.newInstance(UNTITLED_FILE_URI);
+         } else {
+             try {
+                 return TextFragment.newInstance(fileUri);
+             } catch (Exception e) {
+                 e.printStackTrace();
+                 Toast.makeText(activity, "Error opening file for editing.", Toast.LENGTH_SHORT).show();
+                 return WelcomeFragment.newInstance();
+             }
+         }
+     }
+ */
     /*@Override
     public int getItemCount() {
         return fileUris.size();
     }*/
     @Override
     public int getItemCount() {
-        return fragments.size();
+        return terminalFragments.size();
     }
 
     public List<Uri> getFileUris() {
@@ -229,13 +244,12 @@ public class ViewPagerAdapter extends FragmentStateAdapter {
         fileUris.add(uri);
         fileNames.add(fileName);
 
-        Fragment fragment = isTerminal
-                ? TerminalFragment.newInstance(uri)
-                : TextFragment.newInstance(uri);
+        if (isTerminal) {
+            terminalFragments.add(TerminalFragment.newInstance(uri));
+        }
 
-        fragments.add(fragment);
-        notifyItemInserted(fragments.size() - 1);
-        return fragments.size() - 1;
+        notifyItemInserted(fileUris.size() - 1);
+        return fileUris.size() - 1;
     }
 
     public int findTabPositionByName(String name) {
