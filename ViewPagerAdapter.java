@@ -3,6 +3,7 @@ package com.codestudio.mobile;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.net.Uri;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
@@ -244,6 +245,12 @@ public class ViewPagerAdapter extends FragmentStateAdapter {
     }
 
     public int addTab(Uri uri, String fileName, boolean isTerminal) {
+        if (uri == null) {
+            return fileUris.contains(WELCOME_URI) ? fileUris.indexOf(WELCOME_URI) : 0;
+        }
+//        if (fileUris.contains(uri)) {
+//            return fileUris.indexOf(uri);
+//        }
         if (isTerminal) {
             removeTerminalFor(uri);
         }
@@ -261,28 +268,37 @@ public class ViewPagerAdapter extends FragmentStateAdapter {
         fileUris.add(insertIndex, uri);
         fileNames.add(insertIndex, fileName);
         fragments.add(insertIndex, fragment);
+        Log.i("addTab", "addTab: fileuris" + fileUris);
+        Log.i("addTab", "addTab: filenames" + fileName);
         notifyItemInserted(insertIndex);
         return insertIndex;
     }
 
     private int getInsertIndex(Uri uri, boolean isTerminal) {
         if (!isTerminal || fileUris.isEmpty()) {
+            Log.e("ViewPagerAdapter", "getInsertIndex: fileUris size:" + fileUris.size());
             return fileUris.size() - 1;
         }
 
+        String targetName = uri.getLastPathSegment(); // sample.java
+
         for (int i = 0; i < fileUris.size(); i++) {
-            if (fileUris.get(i).equals(uri)) {
-                return i + 1;
+            String fileName = fileUris.get(i).getLastPathSegment();
+            if (fileName != null && fileName.equals(targetName)) {
+                Log.e("ViewPagerAdapter", "getInsertIndex: fileUris size:" + i);
+                return i;
             }
         }
-
-        return fileUris.size() - 1;
+        Log.e("ViewPagerAdapter", "getInsertIndex: fileUris size:" + fileUris.size());
+        return fileUris.size() - 1; // fallback
     }
 
     public void removeTerminalFor(Uri fileUri) {
+        String targetName = fileUri.getLastPathSegment();
+
         for (int i = 0; i < fileUris.size(); i++) {
             Uri uri = fileUris.get(i);
-            if ("run".equals(uri.getScheme()) && uri.getLastPathSegment().equals(fileUri.getLastPathSegment())) {
+            if ("run".equals(uri.getScheme()) && uri.getLastPathSegment().equals(targetName)) {
                 fileUris.remove(i);
                 fileNames.remove(i);
                 fragments.remove(i);

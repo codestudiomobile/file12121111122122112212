@@ -3,11 +3,14 @@ package com.codestudio.mobile;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.util.Log;
 import android.widget.Toast;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 
 // This class handles all logic for controlling Termux via Intents
 public class TermuxRunner {
@@ -21,6 +24,7 @@ public class TermuxRunner {
     private static final String EXTRA_SESSION_NAME_NEW = "com.termux.app.RunCommand.NEW_SESSION_NAME";
 
     private final Context context;
+    private BufferedWriter stdinWriter;
 
     public TermuxRunner(Context context) {
         this.context = context;
@@ -60,10 +64,29 @@ public class TermuxRunner {
         }
     }
 
+    public TerminalFragment createBlankTerminal() {
+        Uri terminalUri = new Uri.Builder().scheme("run").path("Terminal-" + System.currentTimeMillis()).build();
+
+        return TerminalFragment.newInstance(terminalUri);
+    }
+
     public void launchTerminal(TerminalFragment.ConsoleInputListener listener) {
         if (listener != null) {
             listener.onOutputReceived("CODE STUDIO\nType a command below or run a file to begin.\n");
         }
+    }
+
+    public void sendInput(String input) {
+        new Thread(() -> {
+            try {
+                if (stdinWriter != null) {
+                    stdinWriter.write(input + "\n");
+                    stdinWriter.flush();
+                }
+            } catch (Exception e) {
+                Log.e("TermuxRunner", "Failed to send input", e);
+            }
+        }).start();
     }
 
     /**
@@ -71,34 +94,47 @@ public class TermuxRunner {
      * This replaces Termux's RunCommand intent.
      */
     public void executeCommandInternally(String command, TerminalFragment.ConsoleInputListener listener) {
-        ((Activity) context).runOnUiThread(() -> {
+        new Thread(() -> {
             try {
                 Process process = Runtime.getRuntime().exec(new String[]{"sh", "-c", command});
+
+                // Send "y" to stdin
+                stdinWriter = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()));
 
                 BufferedReader stdout = new BufferedReader(new InputStreamReader(process.getInputStream()));
                 BufferedReader stderr = new BufferedReader(new InputStreamReader(process.getErrorStream()));
 
                 String line;
                 while ((line = stdout.readLine()) != null) {
-                    if (listener != null) listener.onOutputReceived(line + "\n");
+                    String finalLine = line;
+                    ((Activity) context).runOnUiThread(() -> {
+                        if (listener != null) listener.onOutputReceived(finalLine + "\n");
+                    });
                 }
+
                 while ((line = stderr.readLine()) != null) {
-                    if (listener != null) listener.onOutputReceived("❌ " + line + "\n");
+                    String finalLine = line;
+                    ((Activity) context).runOnUiThread(() -> {
+                        if (listener != null) listener.onOutputReceived("❌ " + finalLine + "\n");
+                    });
                 }
 
                 stdout.close();
                 stderr.close();
+                stdinWriter.close();
                 process.waitFor();
 
-                if (listener != null) listener.onExecutionComplete();
+                ((Activity) context).runOnUiThread(() -> {
+                    if (listener != null) listener.onExecutionComplete();
+                });
 
             } catch (Exception e) {
                 Log.e("TermuxRunner", "Execution error", e);
-                if (listener != null)
-                    listener.onOutputReceived("❌ Error: " + e.getMessage() + "\n");
+                ((Activity) context).runOnUiThread(() -> {
+                    if (listener != null)
+                        listener.onOutputReceived("❌ Error: " + e.getMessage() + "\n");
+                });
             }
-        });
-    }
-    // (You can keep isTermuxInstalled() here if needed elsewhere)
-    // All methods related to Tmux sessions (kill, sendInput) and the old executeTermuxCommand are removed.
+        }).start();
+    }    // All methods related to Tmux sessions (kill, sendInput) and the old executeTermuxCommand are removed.
 }

@@ -302,15 +302,13 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
             }
         } else if (id == R.id.openNewTerminal) {
             TermuxRunner runner = new TermuxRunner(this);
-            runner.launchTerminal(this);
+            TerminalFragment fragment = runner.createBlankTerminal();
+
+            Uri uri = new Uri.Builder().scheme("run").path("Terminal-" + System.currentTimeMillis()).build(); // or pass it separately if needed
+            viewPagerAdapter.addTab(uri, "Terminal", true); // your tab system handles this
             return true;
-        } /*else if (id == R.id.stopExecution) {
-            if (executionManager != null) {
-                executionManager.stopExecution();
-                // UI will be updated by onExecutionComplete/onExecutionError callback
-            }
-            return true;
-        } */ else if (id == R.id.editFile) {
+
+        } else if (id == R.id.editFile) {
             int currentTabPos = tabLayout.getSelectedTabPosition();
             if (currentTabPos != -1) {
                 String currentTabName = viewPagerAdapter.fileNames.get(currentTabPos);
