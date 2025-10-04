@@ -98,8 +98,12 @@ public class TermuxRunner {
             try {
                 Process process = Runtime.getRuntime().exec(new String[]{"sh", "-c", command});
 
-                // Send "y" to stdin
+                // Initialize stdinWriter
                 stdinWriter = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()));
+
+                // ✅ Send "y" directly to stdin
+                stdinWriter.write("y\n");
+                stdinWriter.flush();
 
                 BufferedReader stdout = new BufferedReader(new InputStreamReader(process.getInputStream()));
                 BufferedReader stderr = new BufferedReader(new InputStreamReader(process.getErrorStream()));
@@ -121,8 +125,10 @@ public class TermuxRunner {
 
                 stdout.close();
                 stderr.close();
-                stdinWriter.close();
+
+                // ✅ Do NOT close stdinWriter until after waitFor
                 process.waitFor();
+                stdinWriter.close();
 
                 ((Activity) context).runOnUiThread(() -> {
                     if (listener != null) listener.onExecutionComplete();
@@ -136,5 +142,5 @@ public class TermuxRunner {
                 });
             }
         }).start();
-    }    // All methods related to Tmux sessions (kill, sendInput) and the old executeTermuxCommand are removed.
+    }
 }
