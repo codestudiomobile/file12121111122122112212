@@ -11,6 +11,7 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.util.Map;
 
 // This class handles all logic for controlling Termux via Intents
 public class TermuxRunner {
@@ -96,7 +97,10 @@ public class TermuxRunner {
     public void executeCommandInternally(String command, TerminalFragment.ConsoleInputListener listener) {
         new Thread(() -> {
             try {
-                Process process = Runtime.getRuntime().exec(new String[]{"sh", "-c", command});
+                ProcessBuilder pb = new ProcessBuilder("sh", "-c", command);
+                Map<String, String> env = pb.environment();
+                env.put("PATH", "/data/data/com.termux/files/usr/bin:/data/data/com.termux/files/usr/bin/applets:" + System.getenv("PATH"));
+                Process process = pb.start();
 
                 // Initialize stdinWriter
                 stdinWriter = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()));
